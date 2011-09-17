@@ -11,9 +11,9 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Sat Sep 17 20:47:49 2011 (+0800)
+;; Last-Updated: Sat Sep 17 21:08:14 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 2
+;;     Update #: 6
 ;; URL:
 ;; Keywords:
 ;; Compatibility:
@@ -60,34 +60,30 @@
 (provide 'unique-window-buffers)
 
 
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; unique-window-buffers.el ends here
-
 (defvar unique-window-buffers-uninteresting-filters
   '(minibufferp)
-  "List of functions called in order with a buffer.  It should return t if the buffer is not interesting")
+  "List of functions called in order with a buffer
+  as the only parameter.  It should return t if the buffer is not
+  interesting")
 
 (defvar unique-window-buffers-mode nil
   "Set this variable to t if you want to only see unique buffers in different windows on the same frame.
 
-Note: this does not have the baggage of a full minor-mode.  It's just a variable, setting it has immediate effect")
+Note: this does not have the baggage of a full minor-mode.  It's
+just a variable, setting it has immediate effect")
 
 (defun unique-window-buffers-show (&optional window)
   "Choose a buffer show in no other windows on the same frame to display in window.
 
 If window is nil, then use the `selected-window'"
+  (setq window (or window (selected-window)))
   (let ((other-displayed-buffers (delq nil
                                        (mapcar #'(lambda (w)
-                                                   (when (not (eq w (or window
-                                                                        (selected-window))))
+                                                   (when (not (eq w window))
                                                      (window-buffer w)))
                                                (window-list nil nil nil)))))
     (when (memq (current-buffer) other-displayed-buffers)
-      (set-window-buffer (or window
-                             (selected-window))
+      (set-window-buffer window
                          (or (some
                               #'(lambda (b)
                                   (unless (or (memq b other-displayed-buffers)
@@ -110,3 +106,8 @@ If window is nil, then use the `selected-window'"
     (unique-window-buffers-show ad-return-value)))
 
 ;; if you really need to remove the advice: (ad-deactivate-regexp "\\`unique-window-buffers\\'")
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; unique-window-buffers.el ends here

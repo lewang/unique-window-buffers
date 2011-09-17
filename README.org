@@ -1,0 +1,8 @@
+
+* Purpose
+
+Try to avoid showing same buffer in two windows on the same frame
+
+* Installation
+
+See file header.

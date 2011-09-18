@@ -11,9 +11,9 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Sun Sep 18 14:07:32 2011 (+0800)
+;; Last-Updated: Sun Sep 18 14:37:01 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 9
+;;     Update #: 10
 ;; URL:
 ;; Keywords:
 ;; Compatibility:
@@ -94,14 +94,16 @@ If window is nil, then use the `selected-window'"
                                                      (window-buffer w)))
                                                (window-list nil nil nil)))))
     (when (memq (current-buffer) other-displayed-buffers)
-      (set-window-buffer window
-                         (or (some
-                              #'(lambda (b)
-                                  (unless (or (memq b other-displayed-buffers)
-                                              (some #'(lambda (f) (funcall f b)) unique-window-buffers-uninteresting-filters))
-                                    b))
-                              (buffer-list (selected-frame)))
-                             (current-buffer))))))
+      (set-window-buffer
+       window
+       (or (some
+            #'(lambda (b)
+                (unless (or (memq b other-displayed-buffers)
+                            (some #'(lambda (f) (funcall f b))
+                                  unique-window-buffers-uninteresting-filters))
+                  b))
+            (buffer-list (selected-frame)))
+           (current-buffer))))))
 
 (defadvice switch-to-prev-buffer (around unique-window-buffers activate compile)
   (if unique-window-buffers-mode

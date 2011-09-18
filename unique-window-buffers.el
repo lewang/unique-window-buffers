@@ -11,9 +11,9 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Sat Sep 17 21:08:14 2011 (+0800)
+;; Last-Updated: Sun Sep 18 14:07:32 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 6
+;;     Update #: 9
 ;; URL:
 ;; Keywords:
 ;; Compatibility:
@@ -32,6 +32,17 @@
 ;; new window.  It also happens when quitting help.  So I made this.
 ;;
 ;;
+
+;; Some notes for the author:
+;;
+;;
+;; `bury-buffer' calls `switch-to-prev-buffer'
+;;
+;; `quit-window' calls `switch-to-prev-buffer'
+;;
+;; `kill-buffer' calls `replace-buffer-in-windows' to replace the buffer it
+;; just killed, which calls `switch-to-prev-buffer'
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -92,13 +103,12 @@ If window is nil, then use the `selected-window'"
                               (buffer-list (selected-frame)))
                              (current-buffer))))))
 
-(defadvice quit-window (around unique-window-buffers activate compile)
+(defadvice switch-to-prev-buffer (around unique-window-buffers activate compile)
   (if unique-window-buffers-mode
-      (let ((old-window (or (ad-get-arg 1)
+      (let ((old-window (or (ad-get-arg 0)
                             (selected-window))))
         ad-do-it
-        (when (window-live-p old-window)
-          (unique-window-buffers-show old-window)))
+        (unique-window-buffers-show old-window))
     ad-do-it))
 
 (defadvice split-window (after unique-window-buffers activate compile)

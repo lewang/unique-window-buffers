@@ -11,9 +11,9 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Sun Sep 18 14:37:01 2011 (+0800)
+;; Last-Updated: Mon Sep 19 01:09:49 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 10
+;;     Update #: 21
 ;; URL:
 ;; Keywords:
 ;; Compatibility:
@@ -35,13 +35,22 @@
 
 ;; Some notes for the author:
 ;;
+;; `split-window-*' all call `split-window'
 ;;
 ;; `bury-buffer' calls `switch-to-prev-buffer'
 ;;
-;; `quit-window' calls `switch-to-prev-buffer'
+;; `quit-window' calls `switch-to-prev-buffer', but also has a separate
+;;   code-path that restores directly from window parameter `quit-restore'
 ;;
-;; `kill-buffer' calls `replace-buffer-in-windows' to replace the buffer it
-;; just killed, which calls `switch-to-prev-buffer'
+;; `kill-buffer' calls first kills the buffer, then calls
+;; `replace-buffer-in-windows' to scrub the buffer from other windows.
+;; `kill-buffer' has to be adviced to make the replace buffer unique.
+;;
+;;
+;;`replace-buffer-in-windows' calls `switch-to-prev-buffer'
+;;
+;;
+;; So advice functions `switch-to-prev-buffer' `quit-window' `split-window'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -59,7 +68,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program; see the file COPYING.  If not, write to
 ;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
-;; Floor, Boston, MA 02110-1301, USA.
+;; Floor, Boston, MA 02110-1301, USA.a
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -72,10 +81,19 @@
 
 
 (defvar unique-window-buffers-uninteresting-filters
-  '(minibufferp)
-  "List of functions called in order with a buffer
-  as the only parameter.  It should return t if the buffer is not
-  interesting")
+  (eval-when-compile
+    (list
+     'minibufferp
+     "\\` "
+     (concat "\\`"
+             (regexp-quote "*Pp Eval Output*")
+             "\\'")
+     (concat "\\`"
+             (regexp-quote "*Completions*")
+             "\\'")))
+  "List of regexps matched against buffer-name or functions
+  called with a buffer as the only parameter.  It should return t
+  if the buffer is not interesting")
 
 (defvar unique-window-buffers-mode nil
   "Set this variable to t if you want to only see unique buffers in different windows on the same frame.
@@ -83,24 +101,33 @@
 Note: this does not have the baggage of a full minor-mode.  It's
 just a variable, setting it has immediate effect")
 
-(defun unique-window-buffers-show (&optional window)
+(defun unique-window-buffers-show (&optional window filter)
   "Choose a buffer show in no other windows on the same frame to display in window.
 
-If window is nil, then use the `selected-window'"
+If WINDOW is nil, then use the `selected-window'
+
+FILTER is a list similar to `unique-window-buffers-uninteresting-filters'"
   (setq window (or window (selected-window)))
+  (setq filter (or filter unique-window-buffers-uninteresting-filters))
   (let ((other-displayed-buffers (delq nil
                                        (mapcar #'(lambda (w)
                                                    (when (not (eq w window))
                                                      (window-buffer w)))
                                                (window-list nil nil nil)))))
-    (when (memq (current-buffer) other-displayed-buffers)
+    (when (memq (window-buffer window) other-displayed-buffers)
       (set-window-buffer
        window
        (or (some
             #'(lambda (b)
                 (unless (or (memq b other-displayed-buffers)
-                            (some #'(lambda (f) (funcall f b))
-                                  unique-window-buffers-uninteresting-filters))
+                            (some #'(lambda (i)
+                                      (cond ((stringp i)
+                                             (string-match i (buffer-name b)))
+                                            ((functionp i)
+                                             (funcall i b))
+                                            (t
+                                             (signal 'invalid-argument-error '()))))
+                                  filter))
                   b))
             (buffer-list (selected-frame)))
            (current-buffer))))))
@@ -108,9 +135,45 @@ If window is nil, then use the `selected-window'"
 (defadvice switch-to-prev-buffer (around unique-window-buffers activate compile)
   (if unique-window-buffers-mode
       (let ((old-window (or (ad-get-arg 0)
+                            (selected-window)))
+            (b-or-k (ad-get-arg 1)))
+        ad-do-it
+        (when (window-live-p old-window)
+          (unique-window-buffers-show
+           old-window
+           (if b-or-k
+               ;; old buffer was burried, or killed, we don't need to worry
+               ;; about it
+               nil
+             ;; so buffer#0 is shown, buffer#1 is old buffer, we need to
+             ;; exclude buffer#1
+             (append (list (regexp-quote (concat "\\`"
+                                                 (regexp-quote (nth 1 (buffer-list (selected-frame))))
+                                                 "\\'")))
+                     unique-window-buffers-uninteresting-filters)))))
+    ad-do-it))
+
+(defadvice quit-window (around unique-window-buffers activate compile)
+  (if unique-window-buffers-mode
+      (let (
+            ;; `switch-to-prev-buffer' possibly called, mayhem ensues if we
+            ;; let them work
+            (unique-window-buffers-mode nil)
+            (old-window (or (ad-get-arg 1)
                             (selected-window))))
         ad-do-it
-        (unique-window-buffers-show old-window))
+        (when (window-live-p old-window)
+          (unique-window-buffers-show old-window)))
+    ad-do-it))
+
+(defadvice kill-buffer (around unique-window-buffers activate compile)
+  (if unique-window-buffers-mode
+      (let* ((my-buf (window-normalize-buffer (ad-get-arg 0)))
+             (old-window (when (eq (window-buffer) my-buf)
+                           (selected-window))))
+        ad-do-it
+        (when (window-live-p old-window)
+          (unique-window-buffers-show old-window)))
     ad-do-it))
 
 (defadvice split-window (after unique-window-buffers activate compile)

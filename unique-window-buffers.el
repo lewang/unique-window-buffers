@@ -11,14 +11,23 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Mon Sep 19 17:45:51 2011 (+0800)
+;; Last-Updated: Tue Sep 20 00:34:10 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 26
-;; URL:
+;;     Update #: 27
+;; URL: https://github.com/lewang/unique-window-buffers
 ;; Keywords:
 ;; Compatibility:
 
 ;;; Installation:
+
+                                    ;;;;;;;;;;;;;;;;;;;;;;;;
+                                    ;;                    ;;
+                                    ;;                    ;;
+                                    ;;    this is BETA    ;;
+                                    ;;                    ;;
+                                    ;;                    ;;
+                                    ;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;; add to .emacs.el:
 ;;
@@ -47,10 +56,11 @@
 ;; `kill-buffer' has to be adviced to make the replace buffer unique.
 ;;
 ;;
-;;`replace-buffer-in-windows' calls `switch-to-prev-buffer'
+;; `replace-buffer-in-windows' calls `switch-to-prev-buffer'
 ;;
 ;;
 ;; So advice functions `switch-to-prev-buffer' `quit-window' `split-window'
+;; `kill-buffer'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

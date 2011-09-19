@@ -11,9 +11,9 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Mon Sep 19 01:09:49 2011 (+0800)
+;; Last-Updated: Mon Sep 19 17:45:51 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 21
+;;     Update #: 26
 ;; URL:
 ;; Keywords:
 ;; Compatibility:
@@ -42,7 +42,7 @@
 ;; `quit-window' calls `switch-to-prev-buffer', but also has a separate
 ;;   code-path that restores directly from window parameter `quit-restore'
 ;;
-;; `kill-buffer' calls first kills the buffer, then calls
+;; `kill-buffer' first kills the buffer, then calls
 ;; `replace-buffer-in-windows' to scrub the buffer from other windows.
 ;; `kill-buffer' has to be adviced to make the replace buffer unique.
 ;;
@@ -134,30 +134,28 @@ FILTER is a list similar to `unique-window-buffers-uninteresting-filters'"
 
 (defadvice switch-to-prev-buffer (around unique-window-buffers activate compile)
   (if unique-window-buffers-mode
-      (let ((old-window (or (ad-get-arg 0)
-                            (selected-window)))
-            (b-or-k (ad-get-arg 1)))
+      (let* ((old-window (or (ad-get-arg 0)
+                             (selected-window)))
+             (old-buffer (window-buffer old-window)))
         ad-do-it
         (when (window-live-p old-window)
           (unique-window-buffers-show
            old-window
-           (if b-or-k
-               ;; old buffer was burried, or killed, we don't need to worry
-               ;; about it
-               nil
-             ;; so buffer#0 is shown, buffer#1 is old buffer, we need to
-             ;; exclude buffer#1
-             (append (list (regexp-quote (concat "\\`"
-                                                 (regexp-quote (nth 1 (buffer-list (selected-frame))))
-                                                 "\\'")))
-                     unique-window-buffers-uninteresting-filters)))))
+           (nconc (if (buffer-live-p old-buffer)
+                      ;; if the old buffer wasn't killed or buried, we need to
+                      ;; prevent it from being switched to
+                      (list (regexp-quote (concat "\\`"
+                                                  (buffer-name old-buffer)
+                                                  "\\'")))
+                    nil)
+                  unique-window-buffers-uninteresting-filters))))
     ad-do-it))
 
 (defadvice quit-window (around unique-window-buffers activate compile)
   (if unique-window-buffers-mode
       (let (
             ;; `switch-to-prev-buffer' possibly called, mayhem ensues if we
-            ;; let them work
+            ;; let them do work
             (unique-window-buffers-mode nil)
             (old-window (or (ad-get-arg 1)
                             (selected-window))))

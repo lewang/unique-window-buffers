@@ -11,9 +11,9 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Tue Sep 20 00:34:10 2011 (+0800)
+;; Last-Updated: Wed Sep 21 11:14:11 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 27
+;;     Update #: 29
 ;; URL: https://github.com/lewang/unique-window-buffers
 ;; Keywords:
 ;; Compatibility:
@@ -111,14 +111,14 @@
 Note: this does not have the baggage of a full minor-mode.  It's
 just a variable, setting it has immediate effect")
 
-(defun unique-window-buffers-show (&optional window filter)
+(defun unique-window-buffers-show (&optional window filters)
   "Choose a buffer show in no other windows on the same frame to display in window.
 
 If WINDOW is nil, then use the `selected-window'
 
 FILTER is a list similar to `unique-window-buffers-uninteresting-filters'"
   (setq window (or window (selected-window)))
-  (setq filter (or filter unique-window-buffers-uninteresting-filters))
+  (setq filters (or filters unique-window-buffers-uninteresting-filters))
   (let ((other-displayed-buffers (delq nil
                                        (mapcar #'(lambda (w)
                                                    (when (not (eq w window))
@@ -127,19 +127,18 @@ FILTER is a list similar to `unique-window-buffers-uninteresting-filters'"
     (when (memq (window-buffer window) other-displayed-buffers)
       (set-window-buffer
        window
-       (or (some
-            #'(lambda (b)
-                (unless (or (memq b other-displayed-buffers)
-                            (some #'(lambda (i)
-                                      (cond ((stringp i)
-                                             (string-match i (buffer-name b)))
-                                            ((functionp i)
-                                             (funcall i b))
+       (or (dolist (b (buffer-list (selected-frame)))
+             (unless (or (memq b other-displayed-buffers)
+                         (dolist (f filters)
+                           (let ((res (cond ((stringp f)
+                                             (string-match f (buffer-name b)))
+                                            ((functionp f)
+                                             (funcall f b))
                                             (t
-                                             (signal 'invalid-argument-error '()))))
-                                  filter))
-                  b))
-            (buffer-list (selected-frame)))
+                                             (signal 'invalid-argument-error (list f))))))
+                             (when res
+                               (return res)))))
+               (return b)))
            (current-buffer))))))
 
 (defadvice switch-to-prev-buffer (around unique-window-buffers activate compile)

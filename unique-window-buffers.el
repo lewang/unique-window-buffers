@@ -11,9 +11,9 @@
 
 ;; Created: Sat Sep 17 20:44:06 2011 (+0800)
 ;; Version: 0.1
-;; Last-Updated: Wed Sep 21 11:14:11 2011 (+0800)
+;; Last-Updated: Fri Sep 23 23:54:00 2011 (+0800)
 ;;           By: Le Wang
-;;     Update #: 29
+;;     Update #: 31
 ;; URL: https://github.com/lewang/unique-window-buffers
 ;; Keywords:
 ;; Compatibility:
@@ -89,6 +89,21 @@
 
 (provide 'unique-window-buffers)
 
+(unless (fboundp 'window-normalize-buffer)
+  (defsubst window-normalize-buffer (buffer-or-name)
+    "Return buffer specified by BUFFER-OR-NAME.
+BUFFER-OR-NAME must be either a buffer or a string naming a live
+buffer and defaults to the current buffer."
+    (cond
+     ((not buffer-or-name)
+      (current-buffer))
+     ((bufferp buffer-or-name)
+      (if (buffer-live-p buffer-or-name)
+          buffer-or-name
+        (error "Buffer %s is not a live buffer" buffer-or-name)))
+     ((get-buffer buffer-or-name))
+     (t
+      (error "No such buffer %s" buffer-or-name)))))
 
 (defvar unique-window-buffers-uninteresting-filters
   (eval-when-compile
